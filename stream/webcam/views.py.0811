@@ -1,0 +1,189 @@
+from django.shortcuts import render
+from django.http import StreamingHttpResponse
+import yolov5,torch
+from yolov5.utils.general import (check_img_size, non_max_suppression,
+                                  check_imshow, xyxy2xywh, increment_path)
+from yolov5.utils.torch_utils import select_device, time_sync
+from yolov5.utils.plots import Annotator, colors
+from deep_sort.utils.parser import get_config
+from deep_sort.deep_sort import DeepSort
+import cv2
+from PIL import Image as im
+
+import asyncio
+import nest_asyncio
+#from django_async_stream import AsyncStreamingHttpResponse
+
+# Create your views here.
+def index(request):
+    return render(request,'index.html')
+print(torch.cuda.is_available())
+#load model
+model = yolov5.load('best300.pt')
+# model = torch.hub.load('ultralytics/yolov5', 'yolov5s')
+device = select_device('') # 0 for gpu, '' for cpu
+# initialize deepsort
+cfg = get_config()
+cfg.merge_from_file("deep_sort/configs/deep_sort.yaml")
+deepsort = DeepSort('osnet_x0_25',
+                    device,
+                    max_dist=cfg.DEEPSORT.MAX_DIST,
+                    max_iou_distance=cfg.DEEPSORT.MAX_IOU_DISTANCE,
+                    max_age=cfg.DEEPSORT.MAX_AGE, n_init=cfg.DEEPSORT.N_INIT, nn_budget=cfg.DEEPSORT.NN_BUDGET,
+                    )
+# Get names and colors
+names = model.module.names if hasattr(model, 'module') else model.names
+
+#####
+rtmp = ['rtmp://34.243.140.144/live_hls/drone1', 'rtmp://34.243.140.144/live_hls/drone2'];
+window_titles = ['drone1', 'drone2']
+
+
+# cap = [cv2.VideoCapture(i) for i in names]
+#
+# frames = [None] * len(names);
+# gray = [None] * len(names);
+# ret = [None] * len(names);
+#
+# while True:
+#
+#     for i,c in enumerate(cap):
+#         if c is not None:
+#             ret[i], frames[i] = c.read();
+#
+#
+#     for i,f in enumerate(frames):
+#         if ret[i] is True:
+#             gray[i] = cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)
+#             cv2.imshow(window_titles[i], gray[i]);
+#
+#     if cv2.waitKey(1) & 0xFF == ord('q'):
+#        break
+#
+#
+# for c in cap:
+#     if c is not None:
+#         c.release();
+#####
+class AsyncStreamingHttpResponse(StreamingHttpResponse):
+
+    def __init__(self, streaming_content=(), *args, **kwargs):
+        sync_streaming_content = self.get_sync_iterator(streaming_content)
+        super().__init__(streaming_content=sync_streaming_content, *args, **kwargs)
+
+    @staticmethod
+    async def convert_async_iterable(stream):
+        """Accepts async_generator and async_iterator"""
+        return iter([chunk async for chunk in stream])
+
+    def get_sync_iterator(self, async_iterable):
+        nest_asyncio.apply()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(self.convert_async_iterable(async_iterable))
+        return result
+
+def stream_drone_1():
+    rtmp_addr = "rtmp://34.243.140.144/live_hls/drone1"
+    #cap = cv2.VideoCapture(rtmp_addr)
+    cap_open = False
+    while not cap_open:
+        cap = cv2.VideoCapture()
+        cap.open(rtmp_addr)
+        print(f'CAP OPENED {cap.isOpened()}')
+        cap_open = cap.isOpened()
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Error: failed to capture image")
+        annotator = Annotator(frame, line_width=2, pil=not ascii)
+
+        im0 = annotator.result()
+        print(im0)
+        image_bytes = cv2.imencode('.jpg', im0)[1].tobytes()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + image_bytes + b'\r\n')
+
+async def stream_drone_2():
+    rtmp_addr = "rtmp://34.243.140.144/live_hls/drone2"
+    #cap = cv2.VideoCapture(rtmp_addr)
+    cap_open = False
+    while not cap_open:
+        cap = cv2.VideoCapture()
+        cap.open(rtmp_addr)
+        print(f'CAP OPENED {cap.isOpened()}')
+        cap_open = cap.isOpened()
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Error: failed to capture image")
+        annotator = Annotator(frame, line_width=2, pil=not ascii)
+
+        im0 = annotator.result()
+        print(im0)
+        image_bytes = cv2.imencode('.jpg', im0)[1].tobytes()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + image_bytes + b'\r\n')
+
+def stream_drone_3():
+    rtmp_addr = "rtmp://34.243.140.144/live_hls/drone3"
+    #cap = cv2.VideoCapture(rtmp_addr)
+    cap_open = False
+    while not cap_open:
+        cap = cv2.VideoCapture()
+        cap.open(rtmp_addr)
+        print(f'CAP OPENED {cap.isOpened()}')
+        cap_open = cap.isOpened()
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Error: failed to capture image")
+        annotator = Annotator(frame, line_width=2, pil=not ascii)
+
+        im0 = annotator.result()
+        print(im0)
+        image_bytes = cv2.imencode('.jpg', im0)[1].tobytes()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + image_bytes + b'\r\n')
+
+
+def stream_camera_1():
+    rtmp_addr = "rtmp://34.243.140.144/live_hls/camera1"
+    #cap = cv2.VideoCapture(rtmp_addr)
+    cap_open = False
+    while not cap_open:
+        cap = cv2.VideoCapture()
+        cap.open(rtmp_addr)
+        print(f'CAP OPENED {cap.isOpened()}')
+        cap_open = cap.isOpened()
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Error: failed to capture image")
+        annotator = Annotator(frame, line_width=2, pil=not ascii)
+
+        im0 = annotator.result()
+        print(im0)
+        image_bytes = cv2.imencode('.jpg', im0)[1].tobytes()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + image_bytes + b'\r\n')
+
+def video_feed_drone1(request):
+    return StreamingHttpResponse(stream_drone_1(), content_type='multipart/x-mixed-replace; boundary=frame')
+
+async def video_feed_drone2(request):
+    return AsyncStreamingHttpResponse(stream_drone_2(), content_type='multipart/x-mixed-replace; boundary=frame')
+#
+# def video_feed_drone3(request):
+#     return StreamingHttpResponse(stream_drone_3(), content_type='multipart/x-mixed-replace; boundary=frame')
+#
+# def video_feed_camera1(request):
+#     return StreamingHttpResponse(stream_camera_1(), content_type='multipart/x-mixed-replace; boundary=frame')
+
+
+
+
+
+    
+

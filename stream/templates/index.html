@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Yolov5</title>
+</head>
+<body>
+    <h1>Hello</h1>
+    <table><tr><td>DRONE 1
+    <img src="{% url 'video_feed_drone1' %}" alt="">DRONE 1</img>
+		    </td><td>DRONE 2
+		    </td></tr></table>
+		    <head>
+  <meta charset="utf-8">
+  <title>load demo</title>
+  <style>
+  body {
+    font-size: 12px;
+    font-family: Arial;
+  }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.5.0.js"></script>
+</head>
+<body>
+
+<b>Projects:</b>
+<ol id="new-projects"></ol>
+
+<script>
+$( "#new-projects" ).load( "/resources/load.html #projects li" );
+</script>
+
+</body>
+
+</body>
+</html>
